@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  APPLICANT
+  ANALYST
+  ADMIN
+}
+
+enum LoanStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  DISBURSED
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         Role          @default(APPLICANT)
+  createdAt    DateTime      @default(now())
+  loans        Loan[]        @relation("ApplicantLoans")
+  reviews      Loan[]        @relation("ReviewerLoans")
+  events       LoanEvent[]
+}
+
+model Loan {
+  id            String      @id @default(uuid())
+  applicant     User        @relation("ApplicantLoans", fields: [applicantId], references: [id])
+  applicantId   String
+  reviewer      User?       @relation("ReviewerLoans", fields: [reviewerId], references: [id])
+  reviewerId    String?
+  businessName  String
+  gstin         String
+  amount        Decimal     @db.Decimal(14, 2)
+  tenureMonths  Int
+  annualRate    Decimal     @db.Decimal(5, 2)
+  monthlyEmi    Decimal     @db.Decimal(14, 2)
+  purpose       String
+  status        LoanStatus  @default(SUBMITTED)
+  remarks       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  events        LoanEvent[]
+
+  @@index([status])
+  @@index([applicantId])
+}
+
+model LoanEvent {
+  id         String      @id @default(uuid())
+  loan       Loan        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  loanId     String
+  actor      User        @relation(fields: [actorId], references: [id])
+  actorId    String
+  fromStatus LoanStatus?
+  toStatus   LoanStatus
+  note       String?
+  createdAt  DateTime    @default(now())
+
+  @@index([loanId])
+}
